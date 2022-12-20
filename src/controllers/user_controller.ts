@@ -1,22 +1,24 @@
 import user from "../models/user";
 import Response from "../helpers/response_helper";
 import MESSAGE from "../helpers/message_helper";
-import organization from '../models/organization'
+import organization from "../models/organization";
 import Iuser from "../interfaces/Iuser";
 import IAddUser from "../interfaces/Iadduser";
-import IResponse from "../interfaces/Iresponse"
-import ILogin from "../interfaces/Ilogin"
-import IUpdate from "../interfaces/Iupdate"
-import IUser from "../interfaces/Iuser"
-import IProfile from "../interfaces/Iprofile"
-import IDelete from "../interfaces/Idelete"
+import IResponse from "../interfaces/Iresponse";
+import ILogin from "../interfaces/Ilogin";
+import IUpdate from "../interfaces/Iupdate";
+import IUser from "../interfaces/Iuser";
+import IProfile from "../interfaces/Iprofile";
+import IDelete from "../interfaces/Idelete";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
 import IRequest from "src/interfaces/Irequest";
 import IOrganization from "../interfaces/Iorganization";
-
+import nodemailer from "nodemailer";
+import IEmail from "../interfaces/Iemail";
+import { Parser } from "json2csv";
 class UserController {
-  async addUser(req:IAddUser, res:IResponse) {
+  async addUser(req: IAddUser, res: IResponse) {
     try {
       const check = await user.findOne({
         $or: [{ userName: req.body.userName }, { email: req.body.email }],
@@ -27,18 +29,20 @@ class UserController {
         };
         return Response.error(res, resPayload);
       }
-      const users:Iuser = new user(req.body);
+      const users: Iuser = new user(req.body);
       const idUser = users._id;
-      if(req.body.organization){
+      if (req.body.organization) {
         const attribute = {
           orgName: req.body.organization.orgName,
           userId: idUser,
           address: req.body.organization.address,
         };
-        const orgs:IOrganization =  new organization(attribute);
+        const orgs: IOrganization = new organization(attribute);
         await orgs.save();
       }
-      users.save().then((value) => {
+      users
+        .save()
+        .then((value) => {
           const token = jwt.sign({ _id: value._id }, process.env.JWT_SECRET, {
             expiresIn: "1h",
           });
@@ -61,7 +65,7 @@ class UserController {
       return Response.error(res, resPayload);
     }
   }
-  async login(req:ILogin, res:IResponse) {
+  async login(req: ILogin, res: IResponse) {
     try {
       const userName = await user.findOne({ userName: req.body.userName });
       if (!userName) {
@@ -77,7 +81,10 @@ class UserController {
         return Response.error(res, resPayload);
       }
 
-      const validPassword = await bcrypt.compare(req.body.password,userName.password);
+      const validPassword = await bcrypt.compare(
+        req.body.password,
+        userName.password
+      );
       if (!validPassword) {
         let resPayload = {
           message: MESSAGE.INVALID_CREDENTIALS,
@@ -99,7 +106,7 @@ class UserController {
       return Response.error(res, resPayload);
     }
   }
-  async profile(req:IProfile, res:IRequest) {
+  async profile(req: IProfile, res: IRequest) {
     try {
       const userId = req.userToken._id;
       const users = await user.findById(userId);
@@ -115,10 +122,12 @@ class UserController {
       return Response.error(res, resPayload);
     }
   }
-  async userUpdate(req:IUpdate, res:IResponse) {
+  async userUpdate(req: IUpdate, res: IResponse) {
     try {
       const userId = req.userToken._id;
-      let email:IUser = await user.findOne({ email: req.body.email, _id: { $ne: userId } }).lean();
+      let email: IUser = await user
+        .findOne({ email: req.body.email, _id: { $ne: userId } })
+        .lean();
       if (email) {
         let resPayload = {
           message: MESSAGE.EMAIL_ERROR,
@@ -128,7 +137,9 @@ class UserController {
       if (!req.body.updatePassword) {
         delete req.body.password;
       }
-      const users = await user.findByIdAndUpdate(userId, req.body, {new: true });
+      const users = await user.findByIdAndUpdate(userId, req.body, {
+        new: true,
+      });
       let resPayload = {
         message: MESSAGE.PROFILE_UPDATED,
         payload: users,
@@ -141,7 +152,7 @@ class UserController {
       return Response.error(res, resPayload);
     }
   }
-  async userDelete(req:IDelete, res:IRequest) {
+  async userDelete(req: IDelete, res: IRequest) {
     try {
       const userId = await user.findOne({ _id: req.userToken._id });
       if (userId.isDeleted == true) {
@@ -151,7 +162,8 @@ class UserController {
         return Response.error(res, resPayload);
       }
       const deleteId = req.userToken._id;
-      await user.findByIdAndUpdate(deleteId, { isDeleted: true })
+      await user
+        .findByIdAndUpdate(deleteId, { isDeleted: true })
         .then((value) => {
           let resPayload = {
             message: MESSAGE.USER_RECORD_DELETED,
@@ -166,6 +178,46 @@ class UserController {
       return Response.error(res, resPayload);
     }
   }
-  
+
+  //email
+  async sendEmail(req: IEmail, res: IResponse) {
+    try {
+      let transporter = nodemailer.createTransport({
+        service: "gmail",
+        auth: {
+          user: "akashuswelwins@gmail.com",
+          pass: "kfcfbufbeuddtfqf",
+        },
+        tls: {
+          rejectUnauthorized: false,
+        },
+      });
+      let mailOptions = {
+        from: req.body.from,
+        to: req.body.to,
+        subject: req.body.subject,
+        text: req.body.text,
+      };
+
+      transporter.sendMail(mailOptions, function (err, success) {
+        if (err) {
+          let resPayload = {
+            message: MESSAGE.MAIl_NOT_SENT,
+          };
+          return Response.error(res, resPayload);
+        } else {
+          let resPayload = {
+            message: MESSAGE.EMAIL_SENT_SUCCESSFULLY,
+          };
+          return Response.success(res, resPayload);
+        }
+      });
+    } catch (err) {
+      let resPayload = {
+        message: err.message,
+      };
+      return Response.error(res, resPayload);
+    }
+  }
 }
 export default new UserController();

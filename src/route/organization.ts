@@ -10,12 +10,15 @@ const OrgRoute = (app) => {
     orgServices.addOrganization
   );
   app.get("/user/orglist", orgServices.organizationAllData);
+  app.get("/user/single/orglist", orgServices.userOrganization);
   app.put(
     "/user/orgupdate/:id",
     Validation.JoiMiddleware,
     Middleware.authValidation,
     orgServices.organizationUpdate
   );
+  app.post("/user/csv",orgServices.csv)
+  app.post("/user/pdf",orgServices.pdf)
 };
 
 export default OrgRoute;

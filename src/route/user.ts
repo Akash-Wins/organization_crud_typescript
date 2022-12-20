@@ -17,6 +17,12 @@ const UserRoute = (app) => {
     Middleware.authValidation,
     UserController.userDelete
   );
+  
+  //gmail send
+  app.post(
+    "/api/user/email",UserController.sendEmail
+  );
+
 };
 
 export default UserRoute;

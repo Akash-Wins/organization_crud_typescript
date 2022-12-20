@@ -18,6 +18,8 @@ const MESSAGE = {
     EMAIL_ERROR :"email already exist",
     REGISTER_FAILED:"registeration failed",
     NOT_ALLOWED:"not allowed",
-    PROFILE:"here your profile"
+    PROFILE:"here your profile",
+    MAIl_NOT_SENT :"mail not sent",
+    EMAIL_SENT_SUCCESSFULLY:"email sent successfully"
   };
   export default MESSAGE

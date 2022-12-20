@@ -6,7 +6,10 @@ import IOrgAdd from "../interfaces/Iaddorg"
 import IOrgUpdate from "../interfaces/Iorgupdate";
 import IResponse from "src/interfaces/Iresponse";
 import IRequest from "src/interfaces/Irequest";
-
+import IAddUser from "src/interfaces/Iadduser";
+import {Parser} from "json2csv"
+import PDFDocument from "pdfkit";
+import fs from "fs";
 class orgServices {
     async addOrganization(req:IOrgAdd, res:IResponse) {
       try {
@@ -131,6 +134,139 @@ class orgServices {
         };
         return Response.error(res, resPayload);
       }
+    }
+    async userOrganization(req:IRequest,res:IResponse){
+      try{
+        const singleUser = await user.aggregate([
+          {
+            '$lookup': {
+              'from': 'organizations', 
+              'localField': '_id', 
+              'foreignField': 'userId', 
+              'as': 'org'
+            }
+          }, {
+            '$match': {
+              '_id': 'YRyG4gkZLUOhlnOEiokB2'
+            }
+          }, {
+            '$project': {
+              '_id': 1, 
+              'firstName': 1, 
+              'lastName': 1, 
+              'email': 1, 
+              'userName': 1, 
+              'org': {
+                '_id': 1, 
+                'orgName': 1, 
+                'isActive': 1, 
+                'address': {
+                  'address1': 1, 
+                  'address2': 1, 
+                  'city': 1, 
+                  'state': 1, 
+                  'country': 1
+                }
+              }
+            }
+          }
+        ])
+        let resPayload = {
+          message: MESSAGE.ORGANIZATION_LIST,
+          payload: singleUser
+        };
+        return Response.success(res, resPayload);
+      } catch (err) {
+        let resPayload = {
+          message: MESSAGE.SERVER_ERROR,
+        };
+        return Response.error(res, resPayload);
+      }
+    }
+     //Show all user data using csv
+    async csv(req: IAddUser, res: IResponse) {
+      try {
+        const orgResult = await user.aggregate([
+          {
+            $lookup: {
+              from: "organizations",
+              localField: "_id",
+              foreignField: "userId",
+              as: "organization",
+            },
+          },
+          {
+            $project: {
+              _id:1,
+              userName:1,
+              firstName:1,
+              lastName:1,
+              emai:1
+
+              
+            },
+          },
+        ]);
+        //let allUserQrg = [{name:"akash"}]
+        const json2pdfParser = new Parser();
+        const csv = json2pdfParser.parse(orgResult);
+        fs.writeFile("userdata.csv", csv, function (err) {
+          if (err) {
+            throw err;
+          }
+          console.log("file saved");
+        });
+        let resPayload = {
+          message: "csv Done",
+        };
+        return Response.success(res, resPayload);
+      } catch (err) {
+        let resPayload = {
+          message: MESSAGE.SERVER_ERROR,
+          payload: {},
+        };
+        return Response.error(res, resPayload, 500);
+      }
+    }
+    //Show all user data using pdf
+    async pdf(req: IRequest, res: IResponse) {
+      let allUserQrg = await user
+        .aggregate([
+          {
+            $lookup: {
+              from: "organizations",
+              localField: "_id",
+              foreignField: "userId",
+              as: "organization",
+            },
+          },
+          {
+            $project: {
+              _id:1,
+              userName:1,
+              firstName:1,
+              lastName:1,
+              emai:1
+
+              
+            },
+          },
+        ])
+        .exec();
+        
+      const doc = new PDFDocument();
+
+      doc
+        .fontSize(15)
+        .fillColor("blue")
+        .fontSize(25)
+        .text(JSON.stringify(allUserQrg, null, 2), 100, 100);
+      doc.pipe(fs.createWriteStream("example.pdf"));
+      
+      doc.pipe(res);
+      doc.end();
+      
+      
     }
   }
   export default new orgServices();
