@@ -135,8 +135,9 @@ class orgServices {
         return Response.error(res, resPayload);
       }
     }
-    async userOrganization(req:IRequest,res:IResponse){
+    async userOrganization(req:IOrgAdd,res:IResponse){
       try{
+        const idUser = req.userToken._id
         const singleUser = await user.aggregate([
           {
             '$lookup': {
@@ -147,7 +148,7 @@ class orgServices {
             }
           }, {
             '$match': {
-              '_id': 'YRyG4gkZLUOhlnOEiokB2'
+              '_id': idUser
             }
           }, {
             '$project': {

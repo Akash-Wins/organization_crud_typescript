@@ -10,7 +10,7 @@ const OrgRoute = (app) => {
     orgServices.addOrganization
   );
   app.get("/user/orglist", orgServices.organizationAllData);
-  app.get("/user/single/orglist", orgServices.userOrganization);
+  app.get("/user/single/orglist",Middleware.authValidation,orgServices.userOrganization);
   app.put(
     "/user/orgupdate/:id",
     Validation.JoiMiddleware,
